@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
-import { fetchOrders } from "@/lib/shopify"
+import { fetchOrders, toISTDate } from "@/lib/shopify"
 import { isStackProduct, decomposeStack } from "@/lib/stack-config"
 import { ProcessedOrder, ShopifyOrder } from "@/lib/types"
 
@@ -19,7 +19,7 @@ function buildProcessed(rawOrders: ShopifyOrder[]): ProcessedOrder[] {
     })
     return {
       id: o.id,
-      date: o.created_at.slice(0, 10),
+      date: toISTDate(o.created_at),
       revenue: parseFloat(o.total_price),
       items,
       hasStack: items.some((i) => i.isStack),
@@ -70,7 +70,7 @@ export async function cacheOrders(rawOrders: ShopifyOrder[]) {
   const orderRows = rawOrders.map((o) => ({
     id: o.id,
     created_at: o.created_at,
-    date: o.created_at.slice(0, 10),
+    date: toISTDate(o.created_at),
     financial_status: o.financial_status ?? "",
     total_price: parseFloat(o.total_price ?? "0"),
     has_stack: (o.line_items ?? []).some((li) => isStackProduct(li.title)),

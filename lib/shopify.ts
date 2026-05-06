@@ -1,5 +1,19 @@
 import { ShopifyOrder, ShopifyProduct, AnalyticsData } from "./types"
 
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000 // UTC+5:30
+
+// Convert UTC ISO string → IST date string (YYYY-MM-DD)
+export function toISTDate(utcString: string): string {
+  return new Date(utcString).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })
+}
+
+// Convert IST date string → UTC ISO range for Shopify API
+function istDateToUtcRange(istDate: string, end = false): string {
+  const [y, m, d] = istDate.split("-").map(Number)
+  const istMs = Date.UTC(y, m - 1, d, end ? 23 : 0, end ? 59 : 0, end ? 59 : 0)
+  return new Date(istMs - IST_OFFSET_MS).toISOString()
+}
+
 const SHOP = process.env.SHOPIFY_SHOP_DOMAIN!
 const TOKEN = process.env.SHOPIFY_ACCESS_TOKEN!
 const API_VERSION = "2024-01"
@@ -29,9 +43,11 @@ async function paginate<T>(url: string, key: string): Promise<T[]> {
 }
 
 export async function fetchOrders(from: string, to: string): Promise<ShopifyOrder[]> {
+  // Use IST-converted UTC timestamps so Shopify returns orders matching IST dates
   const url =
     `${BASE}/orders.json?status=any` +
-    `&created_at_min=${from}T00:00:00&created_at_max=${to}T23:59:59` +
+    `&created_at_min=${istDateToUtcRange(from, false)}` +
+    `&created_at_max=${istDateToUtcRange(to, true)}` +
     `&limit=250&fields=id,created_at,line_items,financial_status,total_price`
   return paginate<ShopifyOrder>(url, "orders")
 }

@@ -6,7 +6,7 @@ dotenv.config({ path: path.join(process.cwd(), ".env.local") })
 
 // import after dotenv so env vars are loaded
 import { createClient } from "@supabase/supabase-js"
-import { fetchOrders, fetchAnalytics } from "../lib/shopify"
+import { fetchOrders, fetchAnalytics, toISTDate } from "../lib/shopify"
 import { isStackProduct } from "../lib/stack-config"
 
 const supabase = createClient(
@@ -46,7 +46,7 @@ async function sync() {
     const orderRows = rawOrders.map((o) => ({
       id: o.id,
       created_at: o.created_at,
-      date: o.created_at.slice(0, 10),
+      date: toISTDate(o.created_at),
       financial_status: o.financial_status ?? "",
       total_price: parseFloat(o.total_price ?? "0"),
       has_stack: (o.line_items ?? []).some((li) => isStackProduct(li.title)),
