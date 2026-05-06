@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import { ProductSalesRow } from "@/lib/types"
 
 const fmtCurrency = (n: number) =>
@@ -44,8 +45,8 @@ export default function ProductTable({ rows, showDecomposed, productTypeFilter }
           </thead>
           <tbody className="divide-y divide-gray-50">
             {sorted.map((row) => (
-              <>
-                <tr key={row.title} className={row.isStack ? "bg-brand-50/40" : "bg-white"}>
+              <React.Fragment key={row.title}>
+                <tr className={row.isStack ? "bg-brand-50/40" : "bg-white"}>
                   <td className="px-4 py-3 font-medium text-gray-800">
                     {row.title}
                     {row.isStack && (
@@ -71,7 +72,7 @@ export default function ProductTable({ rows, showDecomposed, productTypeFilter }
                       <td className="px-4 py-2 text-right text-gray-400 text-xs">—</td>
                     </tr>
                   ))}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>
