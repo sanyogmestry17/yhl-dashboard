@@ -84,7 +84,7 @@ async function sync() {
           .filter((t) => t.kind === "refund" && t.status === "success")
           .reduce((s, t) => s + parseFloat(t.amount ?? "0"), 0)
         if (amount === 0) return []
-        return [{ order_id: o.id, refund_id: r.id, date, amount }]
+        return [{ order_id: o.id, refund_date: date, amount }]
       })
     )
     if (refundRows.length > 0) {

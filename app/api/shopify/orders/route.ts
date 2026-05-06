@@ -40,8 +40,8 @@ export async function GET(req: NextRequest) {
     const { data } = await supabase
       .from("refunds")
       .select("amount")
-      .gte("date", from)
-      .lte("date", to)
+      .gte("refund_date", from)
+      .lte("refund_date", to)
     return (data ?? []).reduce((s, r) => s + (r.amount ?? 0), 0)
   }
 
