@@ -102,7 +102,7 @@ export default function KPICards({ kpi, hasGoKwik }: { kpi: KPIData; hasGoKwik: 
 
       <Section title="Shopify" badge="via API">
         <Card label="Total Orders" value={fmt(kpi.totalOrders)} />
-        <Card label="Revenue" value={fmtCurrency(kpi.revenue)} highlight />
+        <Card label="Net Revenue" value={fmtCurrency(kpi.revenue)} highlight />
         <Card
           label="Add to Cart"
           value={kpi.atc > 0 ? fmt(kpi.atc) : "—"}

@@ -48,7 +48,7 @@ export async function fetchOrders(from: string, to: string): Promise<ShopifyOrde
     `${BASE}/orders.json?status=any` +
     `&created_at_min=${istDateToUtcRange(from, false)}` +
     `&created_at_max=${istDateToUtcRange(to, true)}` +
-    `&limit=250&fields=id,created_at,line_items,financial_status,total_price,current_total_price`
+    `&limit=250&fields=id,created_at,line_items,financial_status,total_price,current_total_price,refunds`
   return paginate<ShopifyOrder>(url, "orders")
 }
 

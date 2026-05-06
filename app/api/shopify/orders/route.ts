@@ -36,6 +36,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "from and to required" }, { status: 400 })
   }
 
+  async function fetchRefundTotal(from: string, to: string): Promise<number> {
+    const { data } = await supabase
+      .from("refunds")
+      .select("amount")
+      .gte("date", from)
+      .lte("date", to)
+    return (data ?? []).reduce((s, r) => s + (r.amount ?? 0), 0)
+  }
+
   try {
     // serve from Supabase if data exists
     const { count } = await supabase
@@ -45,22 +54,21 @@ export async function GET(req: NextRequest) {
       .lte("date", to)
 
     if (count && count > 0) {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("raw_json")
-        .gte("date", from)
-        .lte("date", to)
-
-      if (error) throw new Error(error.message)
-      const rawOrders: ShopifyOrder[] = (data ?? []).map((r) => r.raw_json as ShopifyOrder)
-      return NextResponse.json({ orders: buildProcessed(rawOrders), source: "db" })
+      const [ordersResult, refundTotal] = await Promise.all([
+        supabase.from("orders").select("raw_json").gte("date", from).lte("date", to),
+        fetchRefundTotal(from, to),
+      ])
+      if (ordersResult.error) throw new Error(ordersResult.error.message)
+      const rawOrders: ShopifyOrder[] = (ordersResult.data ?? []).map((r) => r.raw_json as ShopifyOrder)
+      return NextResponse.json({ orders: buildProcessed(rawOrders), refundTotal, source: "db" })
     }
 
     // fetch live + cache
     const rawOrders = await fetchOrders(from, to)
     if (rawOrders.length > 0) await cacheOrders(rawOrders)
+    const refundTotal = await fetchRefundTotal(from, to)
 
-    return NextResponse.json({ orders: buildProcessed(rawOrders), source: "live" })
+    return NextResponse.json({ orders: buildProcessed(rawOrders), refundTotal, source: "live" })
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 })
   }

@@ -18,6 +18,18 @@ export interface ShopifyLineItem {
   sku: string
 }
 
+export interface ShopifyRefundTransaction {
+  kind: string      // "refund"
+  status: string    // "success"
+  amount: string
+}
+
+export interface ShopifyRefund {
+  id: number
+  created_at: string  // UTC ISO — when refund was processed
+  transactions: ShopifyRefundTransaction[]
+}
+
 export interface ShopifyOrder {
   id: number
   created_at: string
@@ -25,6 +37,7 @@ export interface ShopifyOrder {
   total_price: string
   current_total_price: string  // after refunds — matches Shopify Analytics "Total sales"
   line_items: ShopifyLineItem[]
+  refunds: ShopifyRefund[]
 }
 
 export interface ShopifyVariant {

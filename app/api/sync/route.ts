@@ -80,6 +80,23 @@ export async function POST(req: NextRequest) {
       await supabase.from("line_items").insert(liRows.slice(i, i + 500))
     }
 
+    const refundRows = rawOrders.flatMap((o) =>
+      (o.refunds ?? []).flatMap((r) => {
+        const date = toISTDate(r.created_at)
+        const amount = (r.transactions ?? [])
+          .filter((t) => t.kind === "refund" && t.status === "success")
+          .reduce((s, t) => s + parseFloat(t.amount ?? "0"), 0)
+        if (amount === 0) return []
+        return [{ order_id: o.id, refund_id: r.id, date, amount }]
+      })
+    )
+    if (refundRows.length > 0) {
+      await supabase.from("refunds").delete().in("order_id", rawOrders.map((o) => o.id))
+      for (let i = 0; i < refundRows.length; i += 500) {
+        await supabase.from("refunds").insert(refundRows.slice(i, i + 500))
+      }
+    }
+
     let analyticsCount = 0
     try {
       const analyticsRows = await fetchAnalytics(from, to)

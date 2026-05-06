@@ -46,10 +46,11 @@ function buildProductRows(orders: ProcessedOrder[]): ProductSalesRow[] {
   return Array.from(map.values())
 }
 
-function buildKPI(rows: GoKwikRow[], orders: ProcessedOrder[], analytics: AnalyticsData[]): KPIData {
+function buildKPI(rows: GoKwikRow[], orders: ProcessedOrder[], analytics: AnalyticsData[], refundTotal: number): KPIData {
   const gk = aggregateGoKwik(rows)
   const totalOrders = orders.length
-  const revenue = orders.reduce((s, o) => s + o.revenue, 0)
+  const grossRevenue = orders.reduce((s, o) => s + o.revenue, 0)
+  const revenue = grossRevenue - refundTotal
   const atc = analytics.reduce((s, a) => s + a.atc, 0)
   const sessions = analytics.reduce((s, a) => s + a.sessions, 0)
   return {
@@ -69,6 +70,7 @@ export default function Dashboard() {
   const [allGoKwikRows, setAllGoKwikRows] = useState<GoKwikRow[]>([])
   const [orders, setOrders] = useState<ProcessedOrder[]>([])
   const [analytics, setAnalytics] = useState<AnalyticsData[]>([])
+  const [refundTotal, setRefundTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [shopifyError, setShopifyError] = useState("")
@@ -87,6 +89,7 @@ export default function Dashboard() {
       if (!ordersRes.ok) setShopifyError(ordersJson.error ?? "Orders fetch failed")
       else {
         setOrders(ordersJson.orders ?? [])
+        setRefundTotal(ordersJson.refundTotal ?? 0)
         setLastSource(ordersJson.source ?? "")
       }
       const analyticsJson = await analyticsRes.json()
@@ -127,7 +130,7 @@ export default function Dashboard() {
     return true
   })
 
-  const kpi = buildKPI(filteredGoKwik, filteredOrders, analytics)
+  const kpi = buildKPI(filteredGoKwik, filteredOrders, analytics, refundTotal)
   const productRows = buildProductRows(filteredOrders)
 
   return (
