@@ -30,7 +30,7 @@ async function paginate<T>(url: string, key: string): Promise<T[]> {
 
 export async function fetchOrders(from: string, to: string): Promise<ShopifyOrder[]> {
   const url =
-    `${BASE}/orders.json?status=any&financial_status=paid` +
+    `${BASE}/orders.json?status=any` +
     `&created_at_min=${from}T00:00:00&created_at_max=${to}T23:59:59` +
     `&limit=250&fields=id,created_at,line_items,financial_status,total_price`
   return paginate<ShopifyOrder>(url, "orders")
