@@ -73,6 +73,43 @@ export async function fetchOrders(from: string, to: string): Promise<ShopifyOrde
   return paginate<ShopifyOrder>(url, "orders")
 }
 
+export interface RefundRow {
+  id: number
+  order_id: number
+  refund_date: string
+  amount: number
+}
+
+// Fetches refunds processed in [from, to] by querying orders updated in that
+// range with financial_status=refunded|partially_refunded. This catches refunds
+// on old orders (placed before our sync start date) processed in the range.
+export async function fetchRefundsInRange(from: string, to: string): Promise<RefundRow[]> {
+  const rows: RefundRow[] = []
+
+  for (const status of ["refunded", "partially_refunded"]) {
+    const url =
+      `${shopifyBase()}/orders.json?status=any&financial_status=${status}` +
+      `&updated_at_min=${istDateToUtcRange(from, false)}` +
+      `&updated_at_max=${istDateToUtcRange(to, true)}` +
+      `&limit=250&fields=id,refunds`
+
+    const orders = await paginate<{ id: number; refunds: { id: number; created_at: string; transactions: { kind: string; status: string; amount: string }[] }[] }>(url, "orders")
+
+    for (const o of orders) {
+      for (const r of o.refunds ?? []) {
+        const date = toISTDate(r.created_at)
+        if (date < from || date > to) continue
+        const amount = (r.transactions ?? [])
+          .filter((t) => t.kind === "refund" && t.status === "success")
+          .reduce((s, t) => s + parseFloat(t.amount ?? "0"), 0)
+        if (amount > 0) rows.push({ id: r.id, order_id: o.id, refund_date: date, amount })
+      }
+    }
+  }
+
+  return rows
+}
+
 export async function fetchProducts(): Promise<ShopifyProduct[]> {
   const url = `${shopifyBase()}/products.json?limit=250&fields=id,title,product_type,tags,handle,variants`
   return paginate<ShopifyProduct>(url, "products")

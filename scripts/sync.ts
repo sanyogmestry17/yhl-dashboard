@@ -6,7 +6,7 @@ dotenv.config({ path: path.join(process.cwd(), ".env.local") })
 
 // import after dotenv so env vars are loaded
 import { createClient } from "@supabase/supabase-js"
-import { fetchOrders, fetchAnalytics, toISTDate } from "../lib/shopify"
+import { fetchOrders, fetchAnalytics, fetchRefundsInRange, toISTDate } from "../lib/shopify"
 import { isStackProduct } from "../lib/stack-config"
 
 const supabase = createClient(
@@ -76,22 +76,24 @@ async function sync() {
       await supabase.from("line_items").insert(liRows.slice(i, i + 500))
     }
 
-    // Extract refunds — each refund transaction stored by IST refund date
-    const refundRows = rawOrders.flatMap((o) =>
+    const inRangeRefunds = rawOrders.flatMap((o) =>
       (o.refunds ?? []).flatMap((r) => {
-        const date = toISTDate(r.created_at)
         const amount = (r.transactions ?? [])
           .filter((t) => t.kind === "refund" && t.status === "success")
           .reduce((s, t) => s + parseFloat(t.amount ?? "0"), 0)
         if (amount === 0) return []
-        return [{ id: r.id, order_id: o.id, refund_date: date, amount }]
+        return [{ id: r.id, order_id: o.id, refund_date: toISTDate(r.created_at), amount }]
       })
     )
+    const oldOrderRefunds = await fetchRefundsInRange(from, to)
+    const refundMap = new Map<number, typeof inRangeRefunds[0]>()
+    for (const r of [...inRangeRefunds, ...oldOrderRefunds]) refundMap.set(r.id, r)
+    const refundRows = Array.from(refundMap.values())
     if (refundRows.length > 0) {
       for (let i = 0; i < refundRows.length; i += 500) {
         await supabase.from("refunds").upsert(refundRows.slice(i, i + 500), { onConflict: "id" })
       }
-      console.log(`[sync] ${refundRows.length} refund rows`)
+      console.log(`[sync] ${refundRows.length} refund rows (${oldOrderRefunds.length} from old orders)`)
     }
 
     console.log("[sync] fetching analytics…")

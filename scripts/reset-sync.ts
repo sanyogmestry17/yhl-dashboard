@@ -5,7 +5,7 @@ import path from "path"
 dotenv.config({ path: path.join(process.cwd(), ".env.local") })
 
 import { createClient } from "@supabase/supabase-js"
-import { fetchOrders, fetchAnalytics, toISTDate } from "../lib/shopify"
+import { fetchOrders, fetchAnalytics, fetchRefundsInRange, toISTDate } from "../lib/shopify"
 import { isStackProduct } from "../lib/stack-config"
 
 const supabase = createClient(
@@ -80,23 +80,32 @@ async function resetAndSync() {
     }
     console.log(`[reset-sync] ${liRows.length} line items stored`)
 
-    // Extract refunds by IST refund date
-    const refundRows = rawOrders.flatMap((o) =>
+    // Extract refunds from fetched orders
+    const inRangeRefunds = rawOrders.flatMap((o) =>
       (o.refunds ?? []).flatMap((r) => {
-        const date = toISTDate(r.created_at)
         const amount = (r.transactions ?? [])
           .filter((t) => t.kind === "refund" && t.status === "success")
           .reduce((s, t) => s + parseFloat(t.amount ?? "0"), 0)
         if (amount === 0) return []
-        return [{ id: r.id, order_id: o.id, refund_date: date, amount }]
+        return [{ id: r.id, order_id: o.id, refund_date: toISTDate(r.created_at), amount }]
       })
     )
+
+    // Also fetch refunds on OLD orders (pre-sync-start) processed in this range
+    console.log("[reset-sync] Fetching refunds on old orders…")
+    const oldOrderRefunds = await fetchRefundsInRange(from, to)
+
+    // Merge, deduplicate by refund id
+    const refundMap = new Map<number, typeof inRangeRefunds[0]>()
+    for (const r of [...inRangeRefunds, ...oldOrderRefunds]) refundMap.set(r.id, r)
+    const refundRows = Array.from(refundMap.values())
+
     if (refundRows.length > 0) {
       for (let i = 0; i < refundRows.length; i += 500) {
         const { error } = await supabase.from("refunds").upsert(refundRows.slice(i, i + 500), { onConflict: "id" })
         if (error) throw new Error(`refunds upsert: ${error.message}`)
       }
-      console.log(`[reset-sync] ${refundRows.length} refund rows stored`)
+      console.log(`[reset-sync] ${refundRows.length} refund rows stored (${oldOrderRefunds.length} from old orders)`)
     } else {
       console.log("[reset-sync] No refunds found")
     }
