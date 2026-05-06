@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       created_at: o.created_at,
       date: toISTDate(o.created_at),
       financial_status: o.financial_status ?? "",
-      total_price: parseFloat(o.total_price ?? "0"),
+      total_price: parseFloat(o.current_total_price ?? o.total_price ?? "0"),
       has_stack: (o.line_items ?? []).some((li) => isStackProduct(li.title)),
       raw_json: o,
     }))

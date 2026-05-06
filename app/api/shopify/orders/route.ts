@@ -20,7 +20,7 @@ function buildProcessed(rawOrders: ShopifyOrder[]): ProcessedOrder[] {
     return {
       id: o.id,
       date: toISTDate(o.created_at),
-      revenue: parseFloat(o.total_price),
+      revenue: parseFloat(o.current_total_price ?? o.total_price),
       items,
       hasStack: items.some((i) => i.isStack),
     }
@@ -72,7 +72,7 @@ export async function cacheOrders(rawOrders: ShopifyOrder[]) {
     created_at: o.created_at,
     date: toISTDate(o.created_at),
     financial_status: o.financial_status ?? "",
-    total_price: parseFloat(o.total_price ?? "0"),
+    total_price: parseFloat(o.current_total_price ?? o.total_price ?? "0"),
     has_stack: (o.line_items ?? []).some((li) => isStackProduct(li.title)),
     raw_json: o,
   }))

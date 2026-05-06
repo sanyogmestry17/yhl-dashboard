@@ -23,6 +23,7 @@ export interface ShopifyOrder {
   created_at: string
   financial_status: string
   total_price: string
+  current_total_price: string  // after refunds — matches Shopify Analytics "Total sales"
   line_items: ShopifyLineItem[]
 }
 
