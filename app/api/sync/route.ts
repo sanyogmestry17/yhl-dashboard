@@ -87,13 +87,12 @@ export async function POST(req: NextRequest) {
           .filter((t) => t.kind === "refund" && t.status === "success")
           .reduce((s, t) => s + parseFloat(t.amount ?? "0"), 0)
         if (amount === 0) return []
-        return [{ order_id: o.id, refund_date: date, amount }]
+        return [{ id: r.id, order_id: o.id, refund_date: date, amount }]
       })
     )
     if (refundRows.length > 0) {
-      await supabase.from("refunds").delete().in("order_id", rawOrders.map((o) => o.id))
       for (let i = 0; i < refundRows.length; i += 500) {
-        await supabase.from("refunds").insert(refundRows.slice(i, i + 500))
+        await supabase.from("refunds").upsert(refundRows.slice(i, i + 500), { onConflict: "id" })
       }
     }
 

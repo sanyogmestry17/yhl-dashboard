@@ -88,12 +88,13 @@ async function resetAndSync() {
           .filter((t) => t.kind === "refund" && t.status === "success")
           .reduce((s, t) => s + parseFloat(t.amount ?? "0"), 0)
         if (amount === 0) return []
-        return [{ order_id: o.id, refund_date: date, amount }]
+        return [{ id: r.id, order_id: o.id, refund_date: date, amount }]
       })
     )
     if (refundRows.length > 0) {
       for (let i = 0; i < refundRows.length; i += 500) {
-        await supabase.from("refunds").insert(refundRows.slice(i, i + 500))
+        const { error } = await supabase.from("refunds").upsert(refundRows.slice(i, i + 500), { onConflict: "id" })
+        if (error) throw new Error(`refunds upsert: ${error.message}`)
       }
       console.log(`[reset-sync] ${refundRows.length} refund rows stored`)
     } else {
