@@ -20,7 +20,7 @@ function buildProcessed(rawOrders: ShopifyOrder[]): ProcessedOrder[] {
     return {
       id: o.id,
       date: toISTDate(o.created_at),
-      revenue: parseFloat(o.current_total_price ?? o.total_price),
+      revenue: parseFloat(o.total_price),
       items,
       hasStack: items.some((i) => i.isStack),
     }
